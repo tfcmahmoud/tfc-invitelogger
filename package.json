@@ -1,0 +1,17 @@
+{
+  "name": "tfc-invitelogger",
+  "version": "3.0.0",
+  "description": "A Package For Discord.js V13 To Help You Log Your Stuff!",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "tfc",
+    "discord",
+    "invite",
+    "invite-logger"
+  ],
+  "author": "tfcmahmoud",
+  "license": "ISC"
+}
