@@ -1,39 +1,56 @@
 let wait = require('./sleep')
-let invites = {}
+let invites = new Map()
 
 async function inviteLogger(client) {
     client.on('ready', async() => {
         await wait(2000);
-    
-        client.guilds.cache.forEach(g => {
-            g.invites.fetch().then(inv => {
-                invites[g.id] = inv
+
+
+            client.guilds.cache.forEach(async g => {
+                const fInvite = await g.invites.fetch().catch(err => {
+                    if (err !== 50013) return
+                })
+                try {
+                    invites.set(g.id, new Map(fInvite.map(invite => [invite.code, invite.uses])))
+                } catch (err) {
+                    if (err) return
+                }
             })
-        })
     })
     
+    client.on('inviteDelete', invite => {
+        invites.get(invite.guild.id).delete(invite.code)
+    })
+
+    client.on('inviteCreate', invite => {
+        invites.get(invite.guild.id).set(invite.code, invite.uses)
+    })
+
+    client.on('guildCreate', guild => {
+        guild.invites.fetch().then(guildInvites => {
+            invites.set(guild.id, new Map(guildInvites.map(invite => [invite.code, invite.uses])))
+        }).catch(err => {
+            if (err !== 50013) return
+        })
+    })
+
+    client.on('guildDelete', guild => {
+        invites.delete(guild.id)
+    })
+
     client.on('guildMemberAdd', async member => {
-        try {
-            if (member.user.bot) return
-            member.guild.invites.fetch().then(async guildInvites => {
-            const ei = invites[member.guild.id];
-                    // Update the cached invites for the guild.
-                    invites[member.guild.id] = guildInvites;
-                    if (!ei) return;
-                    //  Look through the invites, find the one for which the uses went up.
-                    await member.guild.invites.fetch().catch(() => undefined);
-                    const invite = guildInvites.find(i => {
-                        let a = ei.get(i.code);
-                        if (!a) a = 'Vanity Url';
-                        return a
-                    });
-                    if (!invite) return;
-                    let inviter = client.users.cache.get(invite.inviter.id);
-                    if (!inviter) inviter = 'Vanity Url No Inviter'
-                    client.emit("inviteLogger", member, invite, inviter)
-        });
-        } 
-        catch { (e) }
+        if (member.user.bot) return
+        const { guild, user } = member
+        guild.invites.fetch().then(async newInvites => {
+            const oldInvites = invites.get(guild.id)
+            const invite = newInvites.find(i => i.uses > oldInvites.get(i.code))
+            if (!invite) return
+            let inviter = client.users.cache.get(invite.inviter.id)
+            if (!inviter) inviter = 'Vanity URL'
+            client.emit("inviteLogger", member, invite, inviter)
+        }).catch(err => {
+            if (err !== 50013) return
+        })
      })
     }
 
