@@ -1,8 +1,7 @@
 let wait = require('./sleep')
+let invites = {}
 
 async function inviteLogger(client) {
-    let invites = {}
-    
     client.on('ready', async() => {
         await wait(2000);
     
